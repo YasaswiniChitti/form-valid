@@ -12,18 +12,24 @@ import {
   FormGroup,
   FormHelperText,
   Grid,
+  InputAdornment,
   InputLabel,
   MenuItem,
+  OutlinedInput,
   Radio,
+  RadioGroup,
   Select,
   TextField,
   Typography,
   useTheme,
 } from "@mui/material";
-import React from "react";
+import { LoadingButton } from "@mui/lab";
+import React, { useState } from "react";
 import * as yup from "yup";
 import { useForm } from "react-hook-form";
+import toast, { Toaster } from "react-hot-toast";
 import { yupResolver } from "@hookform/resolvers/yup";
+import axios from "axios";
 
 const schema = yup.object().shape({
   firstname: yup
@@ -49,6 +55,7 @@ const schema = yup.object().shape({
       "Address should contain letters,digits and spaces"
     )
     .required("Address is required"),
+  country: yup.string().required("Choose one of the options in the dropdown"),
   zip: yup
     .string()
     .matches(/^[0-9]{7}$/, "postal code must contain 7 digits")
@@ -73,25 +80,54 @@ const schema = yup.object().shape({
 
 export default function Home() {
   const theme = useTheme();
+  const [loading, setLoading] = useState(false);
+
+  const defaultValues = {
+    firstname: "",
+    lastname: "",
+    username: "",
+    email: "",
+    address: "",
+    country: "",
+    zip: "",
+    cardname: "",
+    cardnumber: "",
+    expiry: "",
+    CVV: "",
+  };
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm({
+    defaultValues,
     resolver: yupResolver(schema),
   });
   const onSubmit = (data: any) => {
     console.log(data);
+    setLoading(true);
+    axios
+      .post("http://localhost:3005/billing", data)
+      .then((response) => {
+        console.log(response.data);
+        toast.success("Order placed successfully");
+      })
+      .catch((error) => toast.error(error.message))
+      .finally(() => setLoading(false));
+  };
+  const handleError = (error: any) => {
+    console.log(error);
+    toast.error("Error while submission");
   };
   return (
     <>
       <Container maxWidth="lg">
-        <Grid container sx={{ mb: 4 }}>
-          <Grid item xs={6}>
+        <Grid container sx={{ mb: 4 }} display="flex" justifyContent="center">
+          <Grid item xs={6} sx={{ p: 4 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>
               Billing Address
             </Typography>
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(onSubmit, handleError)}>
               <FormControl fullWidth>
                 <Grid container sx={{ mb: 4 }} spacing={2}>
                   <Grid item xs={6}>
@@ -107,7 +143,6 @@ export default function Home() {
                   </Grid>
                   <Grid item xs={6}>
                     <TextField
-                      autoFocus
                       fullWidth
                       label="Last Name"
                       placeholder="Deo"
@@ -118,7 +153,6 @@ export default function Home() {
                   </Grid>
                 </Grid>
                 <TextField
-                  autoFocus
                   label="Username"
                   placeholder="Username"
                   sx={{ mb: 4 }}
@@ -127,7 +161,6 @@ export default function Home() {
                   helperText=<>{errors.username?.message}</>
                 ></TextField>
                 <TextField
-                  autoFocus
                   label="Email"
                   placeholder="you@example.com"
                   sx={{ mb: 4 }}
@@ -136,7 +169,6 @@ export default function Home() {
                   helperText=<>{errors.email?.message}</>
                 ></TextField>
                 <TextField
-                  autoFocus
                   label="Address"
                   placeholder="1234 Main str"
                   sx={{ mb: 4 }}
@@ -145,14 +177,26 @@ export default function Home() {
                   helperText=<>{errors.address?.message}</>
                 ></TextField>
                 <TextField
-                  autoFocus
                   label="Address2"
                   placeholder="Appartment or suite"
                   sx={{ mb: 4 }}
                 ></TextField>
                 <Grid container spacing={2} sx={{ mb: 4 }}>
                   <Grid item xs={4}>
-                    <FormControl fullWidth>
+                    <TextField
+                      fullWidth
+                      select
+                      label="Country"
+                      {...register("country")}
+                      error={Boolean(errors.country)}
+                      helperText=<>{errors.country?.message}</>
+                    >
+                      <MenuItem value="">Choose one option</MenuItem>
+                      <MenuItem value="India">IN</MenuItem>
+                      <MenuItem value="Austaila">AU</MenuItem>
+                      <MenuItem value="Europe">EU</MenuItem>
+                    </TextField>
+                    {/* <FormControl fullWidth>
                       <InputLabel>Country</InputLabel>
                       <Select label="Country">
                         <MenuItem value="">Choose</MenuItem>
@@ -160,7 +204,7 @@ export default function Home() {
                         <MenuItem value="Australia">AU</MenuItem>
                         <MenuItem value="Europe">EU</MenuItem>
                       </Select>
-                    </FormControl>
+                    </FormControl> */}
                   </Grid>
                   <Grid item xs={4}>
                     <FormControl fullWidth>
@@ -177,7 +221,6 @@ export default function Home() {
                   </Grid>
                   <Grid item xs={3}>
                     <TextField
-                      autoFocus
                       fullWidth
                       label="Zip"
                       {...register("zip")}
@@ -198,25 +241,32 @@ export default function Home() {
               />
               <Divider sx={{ mb: 2 }} />
               <Typography variant="h6">Payment</Typography>
-              <FormControlLabel
-                value="female"
-                control={<Radio />}
-                label="Credit Card"
-              />
-              <FormControlLabel
-                value="female"
-                control={<Radio />}
-                label="Debit Card"
-              />
-              <FormControlLabel
-                value="female"
-                control={<Radio />}
-                label="Paypal"
-              />
+              <FormControl>
+                <RadioGroup
+                  aria-labelledby="demo-radio-buttons-group-label"
+                  defaultValue="credit card"
+                  name="radio-buttons-group"
+                >
+                  <FormControlLabel
+                    value="credit card"
+                    control={<Radio />}
+                    label="Credit Card"
+                  />
+                  <FormControlLabel
+                    value="Debit card"
+                    control={<Radio />}
+                    label="Debit Card"
+                  />
+                  <FormControlLabel
+                    value="paypal"
+                    control={<Radio />}
+                    label="Paypal"
+                  />
+                </RadioGroup>
+              </FormControl>
               <Grid container sx={{ mb: 4 }} spacing={2}>
                 <Grid item xs={6}>
                   <TextField
-                    autoFocus
                     fullWidth
                     label="Name on the card"
                     {...register("cardname")}
@@ -226,7 +276,6 @@ export default function Home() {
                 </Grid>
                 <Grid item xs={6}>
                   <TextField
-                    autoFocus
                     fullWidth
                     label="Credit card number"
                     {...register("cardnumber")}
@@ -238,7 +287,6 @@ export default function Home() {
               <Grid container spacing={2} sx={{ mb: 4 }}>
                 <Grid item xs={4}>
                   <TextField
-                    autoFocus
                     fullWidth
                     label="Expiration"
                     {...register("expiry")}
@@ -248,7 +296,6 @@ export default function Home() {
                 </Grid>
                 <Grid item xs={3}>
                   <TextField
-                    autoFocus
                     fullWidth
                     label="CVV"
                     {...register("CVV")}
@@ -257,12 +304,18 @@ export default function Home() {
                   ></TextField>
                 </Grid>
               </Grid>
-              <Button fullWidth size="large" type="submit" variant="contained">
+              <LoadingButton
+                fullWidth
+                size="large"
+                type="submit"
+                variant="contained"
+                loading={loading}
+              >
                 Continue to checkout
-              </Button>
+              </LoadingButton>
             </form>
           </Grid>
-          <Grid item xs={6} px={4}>
+          <Grid item xs={6} px={4} sx={{ p: 4 }}>
             <Box sx={{ width: "100%", maxWidth: 360 }}>
               <Box sx={{ mx: 2 }}>
                 <Grid container alignItems="flex-start" sx={{ mb: 2 }}>
@@ -276,32 +329,34 @@ export default function Home() {
                   </Grid>
                 </Grid>
                 <Card variant="outlined" sx={{ mb: 2 }}>
-                  <Grid container alignItems="flex-start" sx={{ py: 1 }}>
-                    <Grid item xs sx={{ mx: 2 }}>
+                  <Grid container alignItems="flex-start">
+                    <Grid item xs={8} sx={{ mx: 2 }}>
                       <Typography variant="subtitle1" color="text.primary">
                         Product name
                       </Typography>
                     </Grid>
-                    <Grid item>
+                    <Grid item xs>
                       <Typography
                         variant="body1"
                         color="text.disabled"
-                        sx={{ mx: 2 }}
+                        sx={{ mx: 3 }}
                       >
                         $12
                       </Typography>
                     </Grid>
+                    <Grid item xs={12}>
+                      <Typography
+                        color="text.secondary"
+                        variant="body2"
+                        sx={{ mx: 2, mb: 1 }}
+                      >
+                        Brief description
+                      </Typography>
+                    </Grid>
                   </Grid>
-                  <Typography
-                    color="text.secondary"
-                    variant="body2"
-                    sx={{ mx: 2, my: 1 }}
-                  >
-                    Brief description
-                  </Typography>
                   <Divider />
-                  <Grid container alignItems="flex-start" sx={{ py: 1 }}>
-                    <Grid item xs sx={{ mx: 2 }}>
+                  <Grid container alignItems="flex-start">
+                    <Grid item xs={8} sx={{ mx: 2 }}>
                       <Typography variant="subtitle1" color="text.primary">
                         second product
                       </Typography>
@@ -310,7 +365,7 @@ export default function Home() {
                       <Typography
                         variant="body1"
                         color="text.disabled"
-                        sx={{ mx: 2 }}
+                        sx={{ mx: 3 }}
                       >
                         $8
                       </Typography>
@@ -319,13 +374,13 @@ export default function Home() {
                   <Typography
                     color="text.secondary"
                     variant="body2"
-                    sx={{ mx: 2, my: 1 }}
+                    sx={{ mx: 2, mb: 1 }}
                   >
                     Brief description
                   </Typography>
                   <Divider />
-                  <Grid container alignItems="flex-start" sx={{ py: 1 }}>
-                    <Grid item xs sx={{ mx: 2 }}>
+                  <Grid container alignItems="flex-start">
+                    <Grid item xs={8} sx={{ mx: 2 }}>
                       <Typography variant="subtitle1" color="text.primary">
                         third item
                       </Typography>
@@ -334,7 +389,7 @@ export default function Home() {
                       <Typography
                         variant="body1"
                         color="text.disabled"
-                        sx={{ mx: 2 }}
+                        sx={{ mx: 3 }}
                       >
                         $5
                       </Typography>
@@ -343,19 +398,19 @@ export default function Home() {
                   <Typography
                     color="text.secondary"
                     variant="body2"
-                    sx={{ mx: 2, my: 1 }}
+                    sx={{ mx: 2, mb: 1 }}
                   >
                     Brief description
                   </Typography>
                   <Divider />
-                  <Grid container alignItems="flex-start" sx={{ py: 1 }}>
-                    <Grid item xs sx={{ mx: 2 }}>
+                  <Grid container alignItems="flex-start">
+                    <Grid item xs={8} sx={{ mx: 2 }}>
                       <Typography variant="subtitle1" color="green">
                         Promo code
                       </Typography>
                     </Grid>
                     <Grid item>
-                      <Typography variant="body1" color="00FF00" sx={{ mx: 2 }}>
+                      <Typography variant="body1" color="00FF00" sx={{ mx: 3 }}>
                         -$5
                       </Typography>
                     </Grid>
@@ -363,39 +418,45 @@ export default function Home() {
                   <Typography
                     color="00FF00"
                     variant="body2"
-                    sx={{ mx: 2, my: 1 }}
+                    sx={{ mx: 2, mb: 1 }}
                   >
                     EXAMPLECODE
                   </Typography>
                   <Divider />
-                  <Grid container alignItems="flex-start" sx={{ py: 1 }}>
-                    <Grid item xs sx={{ mx: 2 }}>
+                  <Grid container alignItems="flex-start">
+                    <Grid item xs={8} sx={{ mx: 2, mb: 1 }}>
                       <Typography variant="subtitle1" color="text.primary">
                         Total (USD)
                       </Typography>
                     </Grid>
-                    <Grid item>
-                      <Typography
-                        variant="body1"
-                        color="text.disabled"
-                        sx={{ mx: 2 }}
-                      >
+                    <Grid item sx={{ mx: 3 }}>
+                      <Typography variant="body1" color="text.disabled">
                         $20
                       </Typography>
                     </Grid>
                   </Grid>
                 </Card>
-                <FormGroup row>
-                  <TextField variant="outlined" placeholder="Promo code" />
-                  <Button variant="contained" color="primary">
+                <FormControl>
+                  <InputLabel htmlFor="outlined-adornment-password">
                     Redeem
-                  </Button>
-                </FormGroup>
+                  </InputLabel>
+                  <OutlinedInput
+                    endAdornment={
+                      <InputAdornment position="end">
+                        <Button fullWidth variant="contained" color="primary">
+                          Redeem
+                        </Button>
+                      </InputAdornment>
+                    }
+                    label="Redeem"
+                  ></OutlinedInput>
+                </FormControl>
               </Box>
             </Box>
           </Grid>
         </Grid>
       </Container>
+      <Toaster position="top-right" />
     </>
   );
 }
